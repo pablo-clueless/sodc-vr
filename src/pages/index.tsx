@@ -1,114 +1,122 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { OrbitControls, Preload } from "@react-three/drei";
+import { XR, createXRStore } from "@react-three/xr";
+import { Canvas } from "@react-three/fiber";
+import * as THREE from "three";
+import React from "react";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import { Box, Ground, Obstacle, Sphere } from "@/components/objects";
+import { useControlStore } from "@/store/z-stores/control";
+import { useKeyControls } from "@/hooks";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+type Position = [number, number, number];
 
-export default function Home() {
+const SceneObjects = () => {
+  const raycasterRef = React.useRef<THREE.Raycaster>(new THREE.Raycaster());
+
+  const obstaclePositions = React.useMemo(() => {
+    const positions = [];
+    for (let i = 0; i < 5; i++) {
+      positions.push([
+        (Math.random() - 0.5) * 10,
+        0.25,
+        (Math.random() - 0.5) * 10,
+      ] as Position);
+    }
+    return positions;
+  }, []);
+
+  useKeyControls();
+
   return (
-    <div
-      className={`${geistSans.variable} ${geistMono.variable} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <>
+      <Sphere id="sphere-1" initialPosition={[0, 0.25, -2]} raycaster={raycasterRef} />
+      <Box
+        id="box-1"
+        initialPosition={[0, 0.5, 0]}
+        initialRotation={[0, 0, 0]}
+        raycaster={raycasterRef}
+      />
+      {obstaclePositions.map((position, index) => (
+        <Obstacle
+          key={`obstacle-${index}`}
+          id={`obstacle-${index}`}
+          position={position}
+          raycaster={raycasterRef}
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/pages/index.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      ))}
+      <Ground />
+    </>
+  );
+};
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+const Page = () => {
+  const [sceneKey, setSceneKey] = React.useState(0);
+  const { setSelectedObject } = useControlStore();
+
+  const store = React.useMemo(
+    () =>
+      createXRStore({
+        depthSensing: true,
+      }),
+    [],
+  );
+
+  const resetScene = React.useCallback(() => {
+    setSceneKey((prev) => prev + 1);
+    setSelectedObject(null);
+  }, [setSelectedObject]);
+
+  return (
+    <div className="relative h-screen w-screen overflow-hidden bg-neutral-300">
+      <div className="bg-opacity-50 absolute top-1 left-1 z-10 rounded-lg bg-black/50 p-4 text-white">
+        <h3 className="mb-2 font-bold">Controls:</h3>
+        <p className="text-sm">Click on object to select it (turns green)</p>
+        <p className="text-sm">Selected object: WASD to move, QE for up/down</p>
+        <p className="text-sm">Arrow keys: Rotate selected object</p>
+        <p className="text-sm">Click and drag any object to move it</p>
+        <p className="text-sm">Click on floor to deselect all objects</p>
+        <button
+          className="mt-2 rounded bg-blue-600 px-3 py-1 hover:bg-blue-700"
+          onClick={resetScene}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+          Reset Scene
+        </button>
+      </div>
+
+      <Canvas
+        className="h-screen w-screen"
+        camera={{ position: [0, 3, 5], fov: 75, far: 1000, near: 0.1 }}
+        shadows
+      >
+        <XR store={store}>
+          <OrbitControls
+            enablePan={true}
+            enableZoom={true}
+            enableDamping={true}
+            dampingFactor={0.2}
+            maxPolarAngle={Math.PI / 2.2}
+            minPolarAngle={Math.PI / 6}
+            rotateSpeed={0.3}
+            zoomToCursor
+            zoom0={0.75}
+            maxAzimuthAngle={Math.PI / 2}
+            minAzimuthAngle={-Math.PI / 2}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <ambientLight intensity={0.5} />
+          <directionalLight
+            position={[10, 10, 5]}
+            intensity={1}
+            castShadow
+            shadow-mapSize={1024}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <React.Suspense fallback={null}>
+            <SceneObjects key={sceneKey} />
+          </React.Suspense>
+          <Preload all />
+        </XR>
+      </Canvas>
     </div>
   );
-}
+};
+
+export default Page;
