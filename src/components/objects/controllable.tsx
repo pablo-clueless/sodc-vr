@@ -1,39 +1,79 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import React from "react";
 
 import { useControlStore } from "@/store/z-stores/control";
-import { useDraggable } from "@/hooks";
+import { moveWithCollisionAvoidance } from "@/lib/three";
+import { useDraggable, usePhysics } from "@/hooks";
+import type { Position, Rotation } from "@/types";
 
-type Position = [number, number, number];
-type Rotation = [number, number, number];
-
-export const ControllableObject = ({
-  id,
-  initialPosition,
-  initialRotation = [0, 0, 0] as Rotation,
-  geometry,
-  material,
-}: {
+interface ControllableObjectProps {
   id: string;
   initialPosition: Position;
   initialRotation?: Rotation;
   geometry: React.JSX.Element;
   material: React.JSX.Element;
   raycaster: React.RefObject<THREE.Raycaster>;
+  objectType: "sphere" | "box" | "obstacle";
+  objectSize: number;
+}
+
+export const ControllableObject: React.FC<ControllableObjectProps> = ({
+  id,
+  initialPosition,
+  initialRotation = [0, 0, 0],
+  geometry,
+  material,
+  raycaster,
+  objectType,
+  objectSize,
 }) => {
-  const [position, setPosition] = React.useState<Position>(initialPosition);
-  const [rotation, setRotation] = React.useState<Rotation>(initialRotation);
-  const ref = React.useRef<THREE.Mesh>(null);
-  const materialRef = React.useRef<THREE.Material>(null);
+  const [position, setPosition] = useState<Position>(initialPosition);
+  const [rotation, setRotation] = useState<Rotation>(initialRotation);
+  const ref = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.Material>(null);
   const { camera } = useThree();
   const speed = 0.01;
   const rotationSpeed = 0.01;
 
-  const { selectedObjectId, keysPressed, setSelectedObject } = useControlStore();
+  const {
+    selectedObjectId,
+    keysPressed,
+    setSelectedObject,
+    objects,
+    registerObject,
+    unregisterObject,
+    updateObjectPosition,
+    updateObjectVelocity,
+  } = useControlStore();
+
+  const physics = usePhysics(id, objectSize, objectType);
+
   const isSelected = selectedObjectId === id;
 
-  const handleClick = React.useCallback(
+  useEffect(() => {
+    registerObject({
+      id,
+      position: initialPosition,
+      size: objectSize,
+      type: objectType,
+      velocity: [0, 0, 0],
+      mass: objectType === "sphere" ? 0.8 : 1.2,
+      isGravityAffected: true,
+    });
+
+    const objectId = id;
+    return () => unregisterObject(objectId);
+  }, []);
+
+  const positionRef = useRef(position);
+
+  useEffect(() => {
+    positionRef.current = position;
+    updateObjectPosition(id, position);
+  }, [id, position]);
+
+  const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setSelectedObject(id);
@@ -41,7 +81,7 @@ export const ControllableObject = ({
     [id, setSelectedObject],
   );
 
-  const handleDrag = React.useCallback(
+  const handleDrag = useCallback(
     ({ x, y }: { x: number; y: number }) => {
       const forward = new THREE.Vector3(0, 0, -1);
       forward.applyQuaternion(camera.quaternion);
@@ -58,39 +98,46 @@ export const ControllableObject = ({
       const movementX = x * movementScale;
       const movementZ = -y * movementScale;
 
-      setPosition((prev) => {
-        const newX = prev[0] + right.x * movementX + forward.x * movementZ;
-        const newY = prev[1];
-        const newZ = prev[2] + right.z * movementX + forward.z * movementZ;
+      updateObjectVelocity(id, [0, 0, 0]);
 
-        // Get minimum Y based on object type (simple height check)
-        const minY = id.includes("sphere") ? 0.25 : 0.5;
-        return [newX, Math.max(minY, newY), newZ];
+      setPosition((prev) => {
+        let newX = prev[0] + right.x * movementX + forward.x * movementZ;
+        let newY = prev[1];
+        let newZ = prev[2] + right.z * movementX + forward.z * movementZ;
+
+        const minY = objectType === "sphere" ? 0.25 : 0.5;
+        const desiredPos: Position = [newX, Math.max(minY, newY), newZ];
+
+        return moveWithCollisionAvoidance(objects, id, prev, desiredPos);
       });
     },
-    [camera, id],
+    [camera, id, objects, objectType],
   );
 
   const { isDragging, dragHandlers } = useDraggable(handleDrag);
 
   useFrame(() => {
     if (!ref.current) return;
+
     if (materialRef.current) {
       if (isDragging) {
         (materialRef.current as THREE.MeshStandardMaterial).color.set("blue");
       } else if (isSelected) {
         (materialRef.current as THREE.MeshStandardMaterial).color.set("green");
       } else {
-        const defaultColor = id.includes("sphere")
-          ? "red"
-          : id.includes("box")
-            ? "orange"
-            : `hsl(${parseInt(id.split("-")[1]) * 70}, 100%, 50%)`;
+        const defaultColor =
+          objectType === "sphere"
+            ? "red"
+            : objectType === "box"
+              ? "orange"
+              : `hsl(${parseInt(id.split("-")[1]) * 70}, 100%, 50%)`;
         (materialRef.current as THREE.MeshStandardMaterial).color.set(defaultColor);
       }
     }
 
     if (isSelected && keysPressed.size > 0) {
+      updateObjectVelocity(id, [0, 0, 0]);
+
       setPosition((prev) => {
         let newX = prev[0];
         let newY = prev[1];
@@ -103,9 +150,14 @@ export const ControllableObject = ({
         if (keysPressed.has("q")) newY += speed;
         if (keysPressed.has("e")) newY -= speed;
 
-        // Minimum height check based on object type
-        const minY = id.includes("sphere") ? 0.25 : 0.5;
-        return [newX, Math.max(minY, newY), newZ];
+        if (keysPressed.has(" ")) {
+          physics.setVelocity([0, 5, 0]);
+        }
+
+        const minY = objectType === "sphere" ? 0.25 : 0.5;
+        const desiredPos: Position = [newX, Math.max(minY, newY), newZ];
+
+        return moveWithCollisionAvoidance(objects, id, prev, desiredPos);
       });
 
       setRotation((prev) => {
@@ -122,7 +174,6 @@ export const ControllableObject = ({
       });
     }
 
-    // Update mesh position and rotation
     ref.current.position.set(...position);
     ref.current.rotation.set(...rotation);
   });

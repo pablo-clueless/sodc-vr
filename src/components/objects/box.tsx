@@ -23,8 +23,10 @@ export const Box = ({
       initialPosition={initialPosition}
       initialRotation={initialRotation}
       raycaster={raycaster}
-      geometry={<boxGeometry args={[1, 1, 1]} />}
-      material={<meshStandardMaterial color="orange" />}
+      objectType="sphere"
+      objectSize={0.25}
+      geometry={<sphereGeometry args={[0.25, 16, 16]} />}
+      material={<meshStandardMaterial color="red" />}
     />
   );
 };

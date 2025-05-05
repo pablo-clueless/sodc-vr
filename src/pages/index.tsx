@@ -1,20 +1,21 @@
 import { OrbitControls, Preload } from "@react-three/drei";
 import { XR, createXRStore } from "@react-three/xr";
+import React, { useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import Image from "next/image";
 import * as THREE from "three";
-import React from "react";
 
 import { Box, Ground, Obstacle, Sphere } from "@/components/objects";
 import { useControlStore } from "@/store/z-stores/control";
+import { PhysicsDebugger } from "@/components/debuggers";
 import { useKeyControls } from "@/hooks";
 
 type Position = [number, number, number];
 
-const SceneObjects = () => {
-  const raycasterRef = React.useRef<THREE.Raycaster>(new THREE.Raycaster());
+export const SceneObjects: React.FC = () => {
+  const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
 
-  const obstaclePositions = React.useMemo(() => {
+  const obstaclePositions = useMemo(() => {
     const positions = [];
     for (let i = 0; i < 5; i++) {
       positions.push([
@@ -30,19 +31,19 @@ const SceneObjects = () => {
 
   return (
     <>
-      <Sphere id="sphere-1" initialPosition={[0, 0.25, -2]} raycaster={raycasterRef} />
+      <Sphere id="sphere-1" initialPosition={[0, 0.25, -2]} raycaster={raycaster} />
       <Box
         id="box-1"
         initialPosition={[0, 0.5, 0]}
         initialRotation={[0, 0, 0]}
-        raycaster={raycasterRef}
+        raycaster={raycaster}
       />
       {obstaclePositions.map((position, index) => (
         <Obstacle
           key={`obstacle-${index}`}
           id={`obstacle-${index}`}
           position={position}
-          raycaster={raycasterRef}
+          raycaster={raycaster}
         />
       ))}
       <Ground />
@@ -69,10 +70,10 @@ const Page = () => {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-neutral-300">
-      <div className="bg-opacity-50 absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-lg bg-black/50 p-4">
+      <div className="bg-opacity-50 absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded bg-black/50 p-4">
         <Image src="/logo.svg" alt="sodc-logo" width={100} height={25} />
       </div>
-      <div className="bg-opacity-50 absolute top-1 left-1 z-10 rounded-lg bg-black/50 p-4 text-white">
+      <div className="bg-opacity-50 absolute top-1 left-1 z-10 rounded bg-black/50 p-4 text-white">
         <h3 className="mb-2 font-bold">Controls:</h3>
         <p className="text-sm">Click on object to select it (turns green)</p>
         <p className="text-sm">Selected object: WASD to move, QE for up/down</p>
@@ -86,6 +87,8 @@ const Page = () => {
           Reset Scene
         </button>
       </div>
+
+      <PhysicsDebugger />
 
       <Canvas
         className="h-screen w-screen"

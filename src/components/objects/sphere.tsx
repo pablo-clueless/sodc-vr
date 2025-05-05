@@ -19,8 +19,10 @@ export const Sphere = ({
       id={id}
       initialPosition={initialPosition}
       raycaster={raycaster}
-      geometry={<sphereGeometry args={[0.25, 16, 16]} />}
-      material={<meshStandardMaterial color="red" />}
+      objectType="box"
+      objectSize={0.5}
+      geometry={<boxGeometry args={[1, 1, 1]} />}
+      material={<meshStandardMaterial color="orange" />}
     />
   );
 };

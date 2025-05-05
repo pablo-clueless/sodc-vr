@@ -1,19 +1,31 @@
+import React, { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
-import React from "react";
 
-export const Ground = () => {
-  const ref = React.useRef<THREE.Mesh>(null);
+import { useControlStore } from "@/store/z-stores/control";
 
-  React.useEffect(() => {
+export const Ground: React.FC = () => {
+  const ref = useRef<THREE.Mesh>(null);
+  const { setSelectedObject } = useControlStore();
+
+  useEffect(() => {
     if (ref.current) {
       ref.current.receiveShadow = true;
     }
   }, []);
 
+  const handleGroundClick = useCallback(() => {
+    setSelectedObject(null);
+  }, [setSelectedObject]);
+
   return (
-    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh
+      ref={ref}
+      rotation={[-Math.PI / 2, 0, 0]}
+      receiveShadow
+      onClick={handleGroundClick}
+    >
       <planeGeometry args={[100, 100]} />
-      <meshBasicMaterial color="gray" />
+      <meshStandardMaterial color="gray" />
     </mesh>
   );
 };

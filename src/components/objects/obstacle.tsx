@@ -18,6 +18,8 @@ export const Obstacle = ({
       id={id}
       initialPosition={position}
       raycaster={raycaster}
+      objectType="obstacle"
+      objectSize={0.25}
       geometry={<boxGeometry args={[0.5, 0.5, 0.5]} />}
       material={
         <meshStandardMaterial
