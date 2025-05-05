@@ -1,6 +1,7 @@
 import { OrbitControls, Preload } from "@react-three/drei";
 import { XR, createXRStore } from "@react-three/xr";
 import { Canvas } from "@react-three/fiber";
+import Image from "next/image";
 import * as THREE from "three";
 import React from "react";
 
@@ -68,6 +69,9 @@ const Page = () => {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-neutral-300">
+      <div className="bg-opacity-50 absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-lg bg-black/50 p-4">
+        <Image src="/logo.svg" alt="sodc-logo" width={100} height={25} />
+      </div>
       <div className="bg-opacity-50 absolute top-1 left-1 z-10 rounded-lg bg-black/50 p-4 text-white">
         <h3 className="mb-2 font-bold">Controls:</h3>
         <p className="text-sm">Click on object to select it (turns green)</p>
@@ -76,7 +80,7 @@ const Page = () => {
         <p className="text-sm">Click and drag any object to move it</p>
         <p className="text-sm">Click on floor to deselect all objects</p>
         <button
-          className="mt-2 rounded bg-blue-600 px-3 py-1 hover:bg-blue-700"
+          className="mt-2 rounded bg-blue-600 px-3 py-1 text-sm hover:bg-blue-700"
           onClick={resetScene}
         >
           Reset Scene
