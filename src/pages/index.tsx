@@ -31,7 +31,7 @@ export const SceneObjects: React.FC = () => {
 
   return (
     <>
-      <Sphere id="sphere-1" initialPosition={[0, 0.25, -2]} raycaster={raycaster} />
+      <Sphere id="sphere-1" initialPosition={[0, 0.5, 0]} raycaster={raycaster} />
       <Box
         id="box-1"
         initialPosition={[0, 0.5, 0]}

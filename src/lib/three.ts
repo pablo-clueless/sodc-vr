@@ -2,21 +2,16 @@ import type { ObjectData, Physics, Position, Velocity } from "@/types";
 
 const COLLISION_BUFFER = 0.05;
 
-export const checkCollision = (
+const checkCollision = (
   objects: Record<string, ObjectData>,
   id: string,
   newPosition: Position,
-): {
-  collides: boolean;
-  penetration?: number;
-  normal?: Position;
-  collidingId?: string;
-} => {
+): boolean => {
   const currentObject = objects[id];
-  if (!currentObject) return { collides: false };
+  if (!currentObject) return false;
 
   for (const otherId in objects) {
-    if (otherId === id) continue;
+    if (otherId === id) continue; // Skip self
 
     const otherObject = objects[otherId];
     const dx = newPosition[0] - otherObject.position[0];
@@ -25,23 +20,19 @@ export const checkCollision = (
 
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    const minDistance = currentObject.size + otherObject.size + COLLISION_BUFFER;
+    const minDistance = currentObject.size + otherObject.size;
 
     if (distance < minDistance) {
-      const penetration = minDistance - distance;
-      const normal: Position =
-        distance > 0 ? [dx / distance, dy / distance, dz / distance] : [1, 0, 0];
-
-      return {
-        collides: true,
-        penetration,
-        normal,
-        collidingId: otherId,
-      };
+      return true;
     }
   }
 
-  return { collides: false };
+  const minY = currentObject.size;
+  if (newPosition[1] < minY) {
+    return true;
+  }
+
+  return false;
 };
 
 export const checkPathCollision = (
@@ -52,7 +43,7 @@ export const checkPathCollision = (
   steps = 10,
 ): { collides: boolean; safePosition: Position; collisionInfo?: any } => {
   const endCollision = checkCollision(objects, id, endPos);
-  if (!endCollision.collides) {
+  if (!endCollision) {
     return { collides: false, safePosition: endPos };
   }
 
@@ -65,7 +56,7 @@ export const checkPathCollision = (
     ];
 
     const collisionResult = checkCollision(objects, id, testPos);
-    if (collisionResult.collides) {
+    if (collisionResult) {
       const safeRatio = (i - 1) / steps;
       const safePosition: Position = [
         startPos[0] + (endPos[0] - startPos[0]) * safeRatio,
@@ -91,7 +82,6 @@ export const calculateSlideVector = (
   const dotProduct =
     moveVector[0] * normal[0] + moveVector[1] * normal[1] + moveVector[2] * normal[2];
 
-  // Calculate slide vector: v - (n · v)n
   return [
     moveVector[0] - normal[0] * dotProduct,
     moveVector[1] - normal[1] * dotProduct,
@@ -108,6 +98,7 @@ export const handleCollision = (
 ): { position: Position; velocity: Velocity } => {
   const object = objects[id];
   if (!object) return { position, velocity };
+
   const minY = object.size;
   if (position[1] < minY) {
     return {
@@ -129,6 +120,7 @@ export const handleCollision = (
     const dz = position[2] - otherObject.position[2];
 
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
     const minDistance = object.size + otherObject.size;
 
     if (distance < minDistance) {
@@ -159,14 +151,11 @@ export const handleCollision = (
           reflectedVy * physics.restitution,
           reflectedVz * physics.restitution,
         ];
-
         return { position: newPosition, velocity: newVelocity };
       }
-
       return { position: newPosition, velocity };
     }
   }
-
   return { position, velocity };
 };
 
@@ -176,35 +165,23 @@ export const moveWithCollisionAvoidance = (
   currentPos: Position,
   desiredPos: Position,
 ): Position => {
-  const moveVector: Position = [
-    desiredPos[0] - currentPos[0],
-    desiredPos[1] - currentPos[1],
-    desiredPos[2] - currentPos[2],
-  ];
-
-  const pathCollision = checkPathCollision(objects, id, currentPos, desiredPos);
-
-  if (!pathCollision.collides) {
+  if (!checkCollision(objects, id, desiredPos)) {
     return desiredPos;
   }
 
-  if (pathCollision.collisionInfo?.normal) {
-    const slideVector = calculateSlideVector(
-      moveVector,
-      pathCollision.collisionInfo.normal,
-    );
-
-    const slidePos: Position = [
-      pathCollision.safePosition[0] + slideVector[0] * 0.8,
-      pathCollision.safePosition[1] + slideVector[1] * 0.8,
-      pathCollision.safePosition[2] + slideVector[2] * 0.8,
+  const steps = 5;
+  for (let i = steps - 1; i > 0; i--) {
+    const ratio = i / steps;
+    const testPos: Position = [
+      currentPos[0] + (desiredPos[0] - currentPos[0]) * ratio,
+      currentPos[1] + (desiredPos[1] - currentPos[1]) * ratio,
+      currentPos[2] + (desiredPos[2] - currentPos[2]) * ratio,
     ];
 
-    const slideCollision = checkCollision(objects, id, slidePos);
-    if (!slideCollision.collides) {
-      return slidePos;
+    if (!checkCollision(objects, id, testPos)) {
+      return testPos;
     }
   }
 
-  return pathCollision.safePosition;
+  return currentPos;
 };

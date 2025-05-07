@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { useControlStore } from "@/store/z-stores/control";
 import type { Position, Velocity } from "@/types";
 import { handleCollision } from "@/lib/three";
+import { Clock } from "three";
 
 export const usePhysics = (
   id: string,
@@ -13,18 +14,17 @@ export const usePhysics = (
   const { objects, physics, updateObjectPosition, updateObjectVelocity } =
     useControlStore();
 
-  const lastUpdateTimeRef = useRef(Date.now());
   const velocityRef = useRef<Velocity>([0, 0, 0]);
   const positionRef = useRef<Position>([0, 0, 0]);
   const onGroundRef = useRef(false);
+  const isDraggingRef = useRef(false);
 
   useFrame(() => {
-    const now = Date.now();
-    const dt = Math.min((now - lastUpdateTimeRef.current) / 1000, 0.1);
-    lastUpdateTimeRef.current = now;
+    const clock = new Clock();
+    const dt = Math.min(clock.getDelta(), 0.016);
 
     const object = objects[id];
-    if (!object || !object.isGravityAffected) return;
+    if (!object || !object.isGravityAffected || isDraggingRef.current) return;
 
     const position = object.position;
     const velocity = object.velocity || [0, 0, 0];
@@ -33,6 +33,7 @@ export const usePhysics = (
     velocityRef.current = velocity;
 
     const isOnGround = position[1] <= object.size + 0.01;
+
     const isVelocityNegligible =
       Math.abs(velocity[0]) < 0.01 &&
       Math.abs(velocity[1]) < 0.01 &&
@@ -60,21 +61,54 @@ export const usePhysics = (
       position[2] + newVelocity[2] * dt,
     ];
 
-    const collisionResult = handleCollision(
-      objects,
-      id,
-      newPosition,
-      newVelocity,
-      physics,
-    );
-    newPosition = collisionResult.position;
-    newVelocity = collisionResult.velocity;
+    if (newPosition[1] < object.size) {
+      newPosition[1] = object.size;
 
-    if (Math.abs(newPosition[1] - object.size) < 0.01) {
-      const friction = Math.pow(1 - physics.friction, dt);
-      newVelocity[0] *= friction;
-      newVelocity[2] *= friction;
+      if (newVelocity[1] < 0) {
+        newVelocity[1] = -newVelocity[1] * physics.restitution;
+        newVelocity[0] *= 1 - physics.friction;
+        newVelocity[2] *= 1 - physics.friction;
+      }
     }
+
+    for (const otherId in objects) {
+      if (otherId === id) continue;
+
+      const otherObject = objects[otherId];
+      const dx = newPosition[0] - otherObject.position[0];
+      const dy = newPosition[1] - otherObject.position[1];
+      const dz = newPosition[2] - otherObject.position[2];
+
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      const minDistance = object.size + otherObject.size;
+
+      if (distance < minDistance) {
+        const nx = dx / distance;
+        const ny = dy / distance;
+        const nz = dz / distance;
+
+        const penetration = minDistance - distance;
+
+        newPosition[0] += nx * penetration * 0.5;
+        newPosition[1] += ny * penetration * 0.5;
+        newPosition[2] += nz * penetration * 0.5;
+
+        const dotProduct =
+          newVelocity[0] * nx + newVelocity[1] * ny + newVelocity[2] * nz;
+
+        if (dotProduct < 0) {
+          newVelocity[0] -= 2 * dotProduct * nx * physics.restitution;
+          newVelocity[1] -= 2 * dotProduct * ny * physics.restitution;
+          newVelocity[2] -= 2 * dotProduct * nz * physics.restitution;
+        }
+      }
+    }
+
+    const dampingFactor = 0.999;
+    newVelocity[0] *= dampingFactor;
+    newVelocity[1] *= dampingFactor;
+    newVelocity[2] *= dampingFactor;
 
     updateObjectPosition(id, newPosition);
     updateObjectVelocity(id, newVelocity);
@@ -86,6 +120,9 @@ export const usePhysics = (
     setVelocity: (v: Velocity) => {
       velocityRef.current = v;
       updateObjectVelocity(id, v);
+    },
+    setDragging: (isDragging: boolean) => {
+      isDraggingRef.current = isDragging;
     },
   };
 };
