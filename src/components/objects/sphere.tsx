@@ -1,28 +1,18 @@
-import * as THREE from "three";
+import { RigidBody } from "@react-three/rapier";
 import React from "react";
 
-import { ControllableObject } from "./controllable";
+interface Props {
+  color?: string;
+  position?: [number, number, number];
+}
 
-type Position = [number, number, number];
-
-export const Sphere = ({
-  id,
-  initialPosition,
-  raycaster,
-}: {
-  id: string;
-  initialPosition: Position;
-  raycaster: React.RefObject<THREE.Raycaster>;
-}) => {
+export const Sphere = ({ color, position = [0, 0.5, 0] }: Props) => {
   return (
-    <ControllableObject
-      id={id}
-      initialPosition={initialPosition}
-      raycaster={raycaster}
-      objectType="sphere"
-      objectSize={0.5}
-      geometry={<sphereGeometry args={[0.5, 20, 20]} />}
-      material={<meshStandardMaterial color="orange" />}
-    />
+    <RigidBody colliders="ball">
+      <mesh position={position}>
+        <sphereGeometry args={[0.5, 40, 40]} />
+        <meshStandardMaterial color={color || "orange"} />
+      </mesh>
+    </RigidBody>
   );
 };

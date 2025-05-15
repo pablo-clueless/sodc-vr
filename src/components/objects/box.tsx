@@ -1,32 +1,18 @@
-import * as THREE from "three";
+import { RigidBody } from "@react-three/rapier";
 import React from "react";
 
-import { ControllableObject } from "./controllable";
+interface Props {
+  color?: string;
+  position?: [number, number, number];
+}
 
-type Position = [number, number, number];
-type Rotation = [number, number, number];
-
-export const Box = ({
-  id,
-  initialPosition,
-  initialRotation,
-  raycaster,
-}: {
-  id: string;
-  initialPosition: Position;
-  initialRotation: Rotation;
-  raycaster: React.RefObject<THREE.Raycaster>;
-}) => {
+export const Box = ({ color, position = [0, 0.5, 0] }: Props) => {
   return (
-    <ControllableObject
-      id={id}
-      initialPosition={initialPosition}
-      initialRotation={initialRotation}
-      raycaster={raycaster}
-      objectType="box"
-      objectSize={0.25}
-      geometry={<boxGeometry args={[0.25, 0.25, 0.25]} />}
-      material={<meshStandardMaterial color="red" />}
-    />
+    <RigidBody>
+      <mesh position={position}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={color || "blue"} />
+      </mesh>
+    </RigidBody>
   );
 };
