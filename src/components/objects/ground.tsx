@@ -12,7 +12,7 @@ export const Ground: React.FC = () => {
   }, []);
 
   return (
-    <RigidBody type="fixed" restitution={2}>
+    <RigidBody type="fixed" restitution={1}>
       <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="gray" />

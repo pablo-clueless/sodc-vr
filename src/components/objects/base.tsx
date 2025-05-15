@@ -26,6 +26,14 @@ export const Base = ({
 
   const { selected, keysPressed, onSelect } = useControlStore();
 
+  const handleSelect = (id: string) => {
+    if (selected === id) {
+      onSelect("");
+      return;
+    }
+    onSelect(id);
+  };
+
   useFrame(() => {
     if (!ref.current) return;
 
@@ -67,7 +75,7 @@ export const Base = ({
 
   return (
     <RigidBody ref={ref}>
-      <mesh position={position} onClick={() => onSelect(id)}>
+      <mesh position={position} onClick={() => handleSelect(id)}>
         {geometry}
         {React.cloneElement(material, { ref: materialRef })}
       </mesh>

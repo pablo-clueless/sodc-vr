@@ -7,10 +7,13 @@ import Image from "next/image";
 
 import { Base, Box, Ground, Sphere } from "@/components/objects";
 import { useKeyControls } from "@/hooks";
+import { generateColor } from "@/lib";
 
 type Position = [number, number, number];
 
 export const SceneObjects: React.FC = () => {
+  const color = useMemo(() => generateColor(), []);
+
   const obstaclePositions = useMemo(() => {
     const positions = [];
     for (let i = 0; i < 5; i++) {
@@ -34,7 +37,14 @@ export const SceneObjects: React.FC = () => {
       <Sphere />
       <Box />
       {obstaclePositions.map((position, index) => (
-        <Box key={index} position={position} />
+        <Base
+          key={index}
+          id={`base-${index}`}
+          geometry={<boxGeometry args={[1, 1, 1]} />}
+          material={<meshStandardMaterial />}
+          position={position}
+          color={color}
+        />
       ))}
       <Ground />
     </>
