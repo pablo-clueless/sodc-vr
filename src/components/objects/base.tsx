@@ -30,9 +30,9 @@ export const Base = ({
     if (!ref.current) return;
 
     if (selected === id && keysPressed.size > 0) {
-      let x = position[0];
-      let y = position[1];
-      let z = position[2];
+      const x = position[0];
+      const y = position[1];
+      const z = position[2];
 
       if (keysPressed.has("w")) {
         ref.current.applyImpulse({ x, y, z: z - speed }, true);

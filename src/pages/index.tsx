@@ -61,8 +61,9 @@ const Page = () => {
         <h3 className="mb-2 font-bold">Controls:</h3>
         <p className="text-sm">Click on object to select it (turns green)</p>
         <p className="text-sm">Selected object: WASD to move, QE for up/down</p>
-        <p className="text-sm">Arrow keys: Rotate selected object</p>
-        <p className="text-sm">Click any object to select it</p>
+        {/* <p className="text-sm">Arrow keys: Rotate selected object</p> */}
+        {/* <p className="text-sm">Click any object to select it</p> */}
+        <p className="text-sm">Only red objects can be selected</p>
       </div>
       <Canvas
         className="h-screen w-screen"
